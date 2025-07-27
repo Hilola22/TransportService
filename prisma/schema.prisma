@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+enum Role {
+  USER
+  CLIENT
+  WORKWER
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    Int       @id @default(autoincrement())
+  full_name             String    @db.VarChar(50)
+  email                 String    @unique @db.VarChar(50)
+  phone                 String?   @unique @db.VarChar(15)
+  role                  Role      @default(USER)
+  hashedPassword        String
+  hashedRefreshToken    String?
+  activationLink        String?   @unique @default(uuid())
+  is_active             Boolean?  @default(false)
+  is_approved           Boolean?  @default(false)
+  forgotPasswordToken   String?   @unique
+  forgotPasswordExpires DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  car                   Car[]
+
+  @@map("users")
+}
+
+model Admin {
+  id                    Int       @id @default(autoincrement())
+  full_name             String    @db.VarChar(50)
+  email                 String    @unique @db.VarChar(50)
+  phone                 String?   @unique @db.VarChar(15)
+  is_creator            Boolean?  @default(false)
+  is_approved           Boolean?  @default(false)
+  forgotPasswordToken   String?   @unique
+  forgotPasswordExpires DateTime?
+  hashedPassword        String
+  hashedRefreshToken    String?
+  activationLink        String?   @unique @default(uuid())
+  is_active             Boolean?  @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("admins")
+}
+
+model Regions {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  districts Districts[]
+
+  @@map("regions")
+}
+
+model Districts {
+  id        Int      @id @default(autoincrement())
+  name      String
+  regionId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  regions   Regions? @relation(fields: [regionsId], references: [id])
+  regionsId Int?
+
+  @@map("districts")
+}
+
+model Category {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+}
+
+model Car {
+  id               Int    @id @default(autoincrement())
+  plate_number     String @db.VarChar(10)
+  vin_number       String @db.VarChar(30)
+  model            String
+  year             String
+  current_owner_id Int
+  user             User?  @relation(fields: [userId], references: [id])
+  userId           Int?
+
+  @@map("car")
+}

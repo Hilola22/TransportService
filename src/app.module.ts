@@ -9,6 +9,7 @@ import { MailModule } from './mail/mail.module';
 import { DistrictsModule } from './districts/districts.module';
 import { CarModule } from './car/car.module';
 import { CategoryModule } from './category/category.module';
+import { CarHistoryModule } from './car-history/car-history.module';
 
 @Module({
   imports: [ConfigModule.forRoot({
@@ -23,7 +24,8 @@ import { CategoryModule } from './category/category.module';
   MailModule,
   DistrictsModule,
   CarModule,
-  CategoryModule
+  CategoryModule,
+  CarHistoryModule
   ],
   controllers: [],
   providers: [],

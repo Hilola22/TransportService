@@ -26,21 +26,22 @@ datasource db {
 }
 
 model User {
-  id                    Int       @id @default(autoincrement())
-  full_name             String    @db.VarChar(50)
-  email                 String    @unique @db.VarChar(50)
-  phone                 String?   @unique @db.VarChar(15)
-  role                  Role      @default(USER)
+  id                    Int          @id @default(autoincrement())
+  full_name             String       @db.VarChar(50)
+  email                 String       @unique @db.VarChar(50)
+  phone                 String?      @unique @db.VarChar(15)
+  role                  Role         @default(USER)
   hashedPassword        String
   hashedRefreshToken    String?
-  activationLink        String?   @unique @default(uuid())
-  is_active             Boolean   @default(false)
-  is_approved           Boolean?  @default(false)
-  forgotPasswordToken   String?   @unique
+  activationLink        String?      @unique @default(uuid())
+  is_active             Boolean      @default(false)
+  is_approved           Boolean?     @default(false)
+  forgotPasswordToken   String?      @unique
   forgotPasswordExpires DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
   car                   Car[]
+  carHistory            CarHistory[]
 
   @@map("users")
 }
@@ -94,14 +95,27 @@ model Category {
 }
 
 model Car {
-  id               Int    @id @default(autoincrement())
-  plate_number     String @db.VarChar(10)
-  vin_number       String @db.VarChar(30)
+  id               Int          @id @default(autoincrement())
+  plate_number     String       @db.VarChar(10)
+  vin_number       String       @db.VarChar(30)
   model            String
   year             String
   current_owner_id Int
-  user             User?  @relation(fields: [userId], references: [id])
+  user             User?        @relation(fields: [userId], references: [id])
   userId           Int?
+  carHistory       CarHistory[]
 
   @@map("car")
+}
+
+model CarHistory {
+  id       Int      @id @default(autoincrement())
+  carId    Int
+  buyed_at DateTime @default(now())
+  sold_at  DateTime @default(now())
+  user     User?    @relation(fields: [owerId], references: [id])
+  owerId   Int?
+  car      Car      @relation(fields: [carId], references: [id])
+
+  @@map("car-history")
 }

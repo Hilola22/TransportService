@@ -6,12 +6,15 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from "@nestjs/common";
 import { AdminsService } from "./admins.service";
 import { CreateAdminDto } from "./dto/create-admin.dto";
 import { UpdateAdminDto } from "./dto/update-admin.dto";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { AdminAccessTokenGuard } from "../common/guards";
 
+@UseGuards(AdminAccessTokenGuard)
 @ApiTags("Adminlar")
 @Controller("admins")
 export class AdminsController {

@@ -1,110 +1,175 @@
 import {
+  BadRequestException,
   Body,
   Controller,
-  Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Req,
   Res,
-  Query,
-  HttpCode,
+  UseGuards,
 } from "@nestjs/common";
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiCookieAuth,
-  ApiQuery,
-} from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { CreateUserDto, SignInUserDto } from "../users/dto";
-import { Response, Request } from "express";
+import { CreateAdminDto, SignInAdminDto } from "../admins/dto";
+import { Request, Response } from "express";
+import { ResponseFields } from "../common/types";
+import { ResponseFieldsAdmin } from "../common/types/response.type-admin";
+import { GetCurrentUser, GetCurrentUserId } from "../common/decorators";
+import { AdminAccessTokenGuard, AdminRefreshTokenGuard, UserAccessTokenGuard, UserRefreshTokenGuard } from "../common/guards";
 
-@ApiTags("Avtorizatsiya")
+declare module "express" {
+  interface Request {
+    user: {
+      id: number;
+      email: string;
+    };
+  }
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // USER
   @Post("signup")
-  @ApiOperation({ summary: "Foydalanuvchini ro'yxatdan o'tkazish" })
-  @ApiResponse({
-    status: 201,
-    description:
-      "Foydalanuvchi muvaffaqiyatli ro'yxatdan o'tdi. Iltimos, hisobni faollashtirish uchun emailingizni tekshiring.",
-  })
-  @ApiResponse({ status: 409, description: "Email allaqachon mavjud." })
-  async signup(
-    @Body() dto: CreateUserDto,
-    @Res({ passthrough: true }) res: Response
-  ) {
-    return this.authService.signup(dto, res);
+  async signupUser(@Body() dto: CreateUserDto) {
+    return this.authService.signupUser(dto);
   }
 
   @Post("signin")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Foydalanuvchi tizimga kirishi" })
-  @ApiResponse({
-    status: 200,
-    description: "Foydalanuvchi tizimga muvaffaqiyatli kirdi.",
-  })
-  @ApiResponse({ status: 401, description: "Noto'g'ri login yoki parol." })
-  async signin(
+  async signinUser(
     @Body() dto: SignInUserDto,
     @Res({ passthrough: true }) res: Response
-  ) {
-    return this.authService.signin(dto, res);
+  ): Promise<ResponseFields> {
+    return this.authService.signinUser(dto, res);
   }
 
+  @UseGuards(UserRefreshTokenGuard)
+  @Post("refresh")
+  async refreshUser(
+    @GetCurrentUserId() userId: number,
+    @GetCurrentUser("refreshToken") refreshToken: string,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<ResponseFields> {
+    return this.authService.refreshUser(userId, refreshToken, res);
+  }
+
+  @UseGuards(UserRefreshTokenGuard)
   @Post("signout")
-  @HttpCode(200)
-  @ApiOperation({ summary: "Foydalanuvchini tizimdan chiqish" })
-  @ApiCookieAuth()
-  @ApiResponse({
-    status: 200,
-    description: "Foydalanuvchi tizimdan muvaffaqiyatli chiqdi.",
-  })
-  async signout(
-    @Req() req: Request,
+  @HttpCode(HttpStatus.OK)
+  async signoutUser(
+    @GetCurrentUserId() userId: number,
     @Res({ passthrough: true }) res: Response
-  ) {
-    const refreshToken = req.cookies?.refreshToken;
-    return this.authService.signoutUser(refreshToken, res);
+  ): Promise<boolean> {
+    return this.authService.signoutUser(userId, res);
   }
 
-  @Get("refresh")
-  @ApiOperation({ summary: "Yangi access token olish" })
-  @ApiCookieAuth()
-  @ApiResponse({
-    status: 200,
-    description: "Access token muvaffaqiyatli yangilandi.",
-  })
-  @ApiResponse({
-    status: 401,
-    description: "Noto'g'ri yoki muddati o'tgan refresh token.",
-  })
-  async refresh(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
+  @Post("activate")
+  async activateUser(
+    @Body("activationLink") activationLink: string,
+    @Body("userId") userId: number
   ) {
-    const refreshToken = req.cookies?.refreshToken;
-    return this.authService.refreshTokens(refreshToken, res);
+    if (!activationLink || !userId) {
+      throw new BadRequestException("activationLink va userId talab qilinadi");
+    }
+    return this.authService.activateUser(activationLink, userId);
   }
 
-  @Get("activate")
-  @ApiOperation({ summary: "Hisobni faollashtirish" })
-  @ApiQuery({
-    name: "link",
-    description: "Faollashtirish linki (UUID)",
-    required: true,
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Hisob muvaffaqiyatli faollashtirildi.",
-  })
-  @ApiResponse({
-    status: 404,
-    description: "Noto'g'ri yoki eskirgan faollashtirish linki.",
-  })
-  async activate(@Query("link") activationLink: string) {
-    return this.authService.activate(activationLink);
+  @Post("forgot-password")
+  async forgotPasswordUser(@Body("email") email: string) {
+    if (!email) {
+      throw new BadRequestException("Email is required");
+    }
+    return this.authService.forgotPasswordUser(email);
+  }
+
+  @UseGuards(UserAccessTokenGuard)
+  @Post("change-password")
+  async changePasswordUser(
+    @Req() req: Request,
+    @Body("oldPassword") oldPassword: string,
+    @Body("newPassword") newPassword: string
+  ) {
+    const userId = req.user.id;
+    if (!oldPassword || !newPassword) {
+      throw new BadRequestException("Old and new passwords are required");
+    }
+    return this.authService.changePasswordUser(
+      userId,
+      oldPassword,
+      newPassword
+    );
+  }
+
+  // ADMIN
+  @Post("signup-admin")
+  async signupAdmin(@Body() dto: CreateAdminDto) {
+    return this.authService.signupAdmin(dto);
+  }
+
+  @Post("signin-admin")
+  async signinAdmin(
+    @Body() dto: SignInAdminDto,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<ResponseFieldsAdmin> {
+    return this.authService.signinAdmin(dto, res);
+  }
+
+  @UseGuards(AdminRefreshTokenGuard)
+  @Post("refresh-admin")
+  async refreshAdmin(
+    @GetCurrentUserId() adminId: number,
+    @GetCurrentUser("refreshToken") refreshToken: string,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<ResponseFieldsAdmin> {
+    return this.authService.refreshAdmin(adminId, refreshToken, res);
+  }
+
+  @UseGuards(AdminRefreshTokenGuard)
+  @Post("signout-admin")
+  @HttpCode(HttpStatus.OK)
+  async signoutAdmin(
+    @GetCurrentUserId() adminId: number,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<boolean> {
+    return this.authService.signoutAdmin(adminId, res);
+  }
+
+  @Post("activate-admin")
+  async activateAdmin(
+    @Body("activationLink") activationLink: string,
+    @Body("adminId") adminId: number
+  ) {
+    if (!activationLink || !adminId) {
+      throw new BadRequestException("activationLink va adminId talab qilinadi");
+    }
+    return this.authService.activateAdmin(activationLink, adminId);
+  }
+
+  @Post("forgot-password-admin")
+  async forgotPasswordAdmin(@Body("email") email: string) {
+    if (!email) {
+      throw new BadRequestException("Email is required");
+    }
+    return this.authService.forgotPasswordAdmin(email);
+  }
+
+  @UseGuards(AdminAccessTokenGuard)
+  @Post("change-password-admin")
+  async changePasswordAdmin(
+    @Req() req: Request,
+    @Body("oldPassword") oldPassword: string,
+    @Body("newPassword") newPassword: string
+  ) {
+    const adminId = req.user.id;
+    if (!oldPassword || !newPassword) {
+      throw new BadRequestException("Old and new passwords are required");
+    }
+    return this.authService.changePasswordAdmin(
+      adminId,
+      oldPassword,
+      newPassword
+    );
   }
 }

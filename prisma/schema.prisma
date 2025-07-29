@@ -10,6 +10,11 @@ enum Role {
   WORKWER
 }
 
+enum RoleAdmin {
+  ADMIN
+  SUPERADMIN
+}
+
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -29,7 +34,7 @@ model User {
   hashedPassword        String
   hashedRefreshToken    String?
   activationLink        String?   @unique @default(uuid())
-  is_active             Boolean?  @default(false)
+  is_active             Boolean   @default(false)
   is_approved           Boolean?  @default(false)
   forgotPasswordToken   String?   @unique
   forgotPasswordExpires DateTime?
@@ -46,13 +51,14 @@ model Admin {
   email                 String    @unique @db.VarChar(50)
   phone                 String?   @unique @db.VarChar(15)
   is_creator            Boolean?  @default(false)
+  role                  RoleAdmin @default(ADMIN)
   is_approved           Boolean?  @default(false)
   forgotPasswordToken   String?   @unique
   forgotPasswordExpires DateTime?
   hashedPassword        String
   hashedRefreshToken    String?
   activationLink        String?   @unique @default(uuid())
-  is_active             Boolean?  @default(false)
+  is_active             Boolean   @default(false)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
